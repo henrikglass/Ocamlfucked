@@ -30,3 +30,5 @@ _opam/
 
 # project specific
 ocamlfucked
+kladd.txt
+*.swp
