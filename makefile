@@ -5,4 +5,5 @@ run:
 	ocaml src/ocamlfucked.ml
 
 clean:
-	echo "clean"
+	rm src/*.cm*
+	rm ocamlfucked
