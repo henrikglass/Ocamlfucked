@@ -1,0 +1,31 @@
+
+let rec print_int_list (l : int list) =
+    match l with
+          [] -> printf "\n"
+        | _  -> printf "%d" (List.hd l); print_int_list (List.tl l)
+
+let rec print_char_list (l : char list) =
+    match l with
+          [] -> printf "\n"
+        | _  -> printf "\ne: %d, " (Char.code (List.hd l)); print_char_list (List.tl l)
+
+(************************************* debug **********************************)
+let pretty_print (program : instr list) = 
+    let rec pretty_print (program : instr list) (indent : string) = 
+        print_string ("\n" ^ indent); 
+        match program with
+              []                 -> ()
+            | (Next i)::xs       -> printf "Next %d" i; pretty_print xs indent
+            | (Prev i)::xs       -> printf "Prev %d" i; pretty_print xs indent 
+            | (Plus i)::xs       -> printf "Plus %d" i; pretty_print xs indent 
+            | (Minus i)::xs      -> printf "Minus %d" i; pretty_print xs indent 
+            | Input::xs          -> printf "Input"; pretty_print xs indent 
+            | Output::xs         -> printf "Output"; pretty_print xs indent 
+            | (Loop instrs)::xs  -> printf "Loop ["; 
+                    pretty_print instrs ("  " ^ indent); 
+                    printf "]";
+                    pretty_print xs indent
+    in
+        pretty_print program ""
+
+

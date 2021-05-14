@@ -12,43 +12,51 @@ type instr =
 
 (* A tape is a tuple (['a], ['a]). *)
 type 'a tape = 'a list * 'a list
-(* TODO Maybe create type alias type Mem = char tape*)
 
 (*************************** Useful helper functions **************************)
-(* note to self: `fun` is necessary not to bind value once *)
-(* note to self: Format.print_string & Stdlib.print_string behave differently*)
-
-let rec print_int_list (l : int list) =
-    match l with
-          [] -> printf "\n"
-        | _  -> printf "%d" (List.hd l); print_int_list (List.tl l)
-
-let rec take_helper (n : int) (src : 'a list)  (tgt : 'a list): 'a list =
-    match n with
+(* Equivalent to Haskell's take *)
+let take (n : int) (src : 'a list) : 'a list =
+    let rec f n src tgt = match n with
           0 -> tgt
-        | _ -> take_helper (n-1) (List.tl src) ((List.hd src)::tgt)
-let take (n : int) (src : 'a list) : 'a list = List.rev (take_helper n src []) 
+        | _ -> f (n - 1) (List.tl src) ((List.hd src)::tgt) 
+    in
+        List.rev (f n src [])
+
+(* Equivalent to Haskell's drop *)
 let rec drop (n : int) (l : 'a list) : 'a list =
     match n with
           0 -> l
         | _ -> drop (n-1) (List.tl l)
 
-let read_char = fun () -> String.get (read_line()) 0 
-let put_char = fun c -> Stdlib.print_string (String.make 1 c)  
-let (+) (c : char) (i : int) : char = Char.chr (Char.code c + i) 
-let (-) (c : char) (i : int) : char = Char.chr (Char.code c - i)
+(***************************** Execute a program ******************************)
 
-(**************************** Executes a program ******************************)
+(* exec :: [instr] -> char tape -> char tape. Executes program on a memory tape. 
+   Returns the resulting memory. *) 
 let rec exec (program : instr list) (memory : char tape) : char tape =
+    (* IO *)
+    let rec read_char () = 
+        let c = Scanf.scanf "%c" (fun c -> c) in
+            match c with
+                  '\n' | '\r' -> read_char () (* ignore LF/CR. TODO maybe others as well?*)
+                | _           -> c
+    in
+    let put_char = fun c -> printf "%c%!" c in
+
+    (* arithmetic on chars *)
+    (* Comment: Please don't laugh. *)
+    (* TODO These are a little wonky (factor.b) *)
+    let (++) (c : char) (i : int) : char = Char.chr ((Char.code c + i + 256) mod 256) in 
+    let (--) (c : char) (i : int) : char = Char.chr ((Char.code c - i + 256) mod 256) in
+
     match program, memory with
            (Next i)::xs,  (l, r)      -> exec xs (List.rev_append (take i r) l, drop i r)
         |  (Prev i)::xs,  (l, r)      -> exec xs (drop i l, List.rev_append (take i l) r)
-        |  (Plus i)::xs,  (l, c::r)   -> exec xs (l, (c + i)::r)
-        |  (Minus i)::xs, (l, c::r)   -> exec xs (l, (c - i)::r)
+        |  (Plus i)::xs,  (l, c::r)   -> exec xs (l, (c ++ i)::r)
+        |  (Minus i)::xs, (l, c::r)   -> exec xs (l, (c -- i)::r)
         |  Input::xs,     (l, c::r)   -> exec xs (l, read_char()::r)
         |  Output::xs,    (_, c::_)   -> put_char c; exec xs memory
         |  (Loop l)::xs,  (_, c::_)   -> 
-            if Char.code c == 65 then
+            if Char.code c == 0 then
                 exec xs memory
             else
                 let n_mem = exec l memory in
@@ -59,6 +67,7 @@ let rec exec (program : instr list) (memory : char tape) : char tape =
 
 (************************ Read & parse a .bf file *****************************)
 
+(* read_file :: in_channel -> [char]. Reads chars from file into a list *) 
 let read_file (f : in_channel) : char list =
     let rec read_file (cl : char list) (f : in_channel) : char list =
         try
@@ -69,6 +78,19 @@ let read_file (f : in_channel) : char list =
     in
         List.rev (read_file [] f)
 
+(* group :: [instr] -> [instr]. Groups adjacent instructions of the same kind*) 
+let rec group (instrs : instr list) : instr list =
+    let f = fun acc elem -> match acc, elem with
+          (Next i)::xs, (Next j)   -> (Next (i+j))::xs
+        | (Prev i)::xs, (Prev j)   -> (Prev (i+j))::xs
+        | (Plus i)::xs, (Plus j)   -> (Plus (i+j))::xs
+        | (Minus i)::xs, (Minus j) -> (Minus (i+j))::xs
+        | acc, (Loop loop_instrs)  -> (Loop (group loop_instrs))::acc
+        | acc, elem                -> elem::acc 
+    in
+        List.rev (List.fold_left f [] instrs)
+
+(* parse :: [char] -> [instr]. Parses a list of chars into instructions*) 
 let parse (tokens : char list) : instr list =
     let rec parse_chars (tokens : char list) (instrs : instr list) : instr list * char list =
         match tokens with
@@ -89,35 +111,11 @@ let parse (tokens : char list) : instr list =
     in
         List.rev (fst (parse_chars tokens []))
 
-(************************************* debug **********************************)
-let pretty_print (program : instr list) = 
-    let rec pretty_print (program : instr list) (indent : string) = 
-        print_string ("\n" ^ indent); 
-        match program with
-              []                 -> ()
-            | (Next i)::xs       -> printf "Next %d" i; pretty_print xs indent
-            | (Prev i)::xs       -> printf "Prev %d" i; pretty_print xs indent 
-            | (Plus i)::xs       -> printf "Plus %d" i; pretty_print xs indent 
-            | (Minus i)::xs      -> printf "Minus %d" i; pretty_print xs indent 
-            | Input::xs          -> printf "Input"; pretty_print xs indent 
-            | Output::xs         -> printf "Output"; pretty_print xs indent 
-            | (Loop instrs)::xs  -> printf "Loop ["; 
-                    pretty_print instrs ("  " ^ indent); 
-                    printf "]";
-                    pretty_print xs indent
-    in
-        pretty_print program ""
-
 (************************************** run ***********************************)
-(* initalize program list (temp) and memory tape *)
-let program : instr list = [Next 1;Plus 4;Input;Output;Next 1;Input;Output;Loop [Input; Minus 2];Next 1]
-let memory : char tape = ([], List.init 100 (fun x -> Char.chr 75));; (*TODO change to 0*)
-
-(*print_int_list (take 3 [1;2;3;4;5]);
-print_int_list (drop 3 [1;2;3;4;5]);
-exec program memory;;*)
-let file = open_in "test/test2.bf" in
+(* TODO Support for command line args. E.g $./ocamlfucked test/hanoi.b*)
+let memory : char tape = ([], List.init 10000 (fun x -> Char.chr 0));;
+let file = open_in "test/hanoi.b" in
 let chars = read_file file in
 let program1 = parse chars in
-pretty_print program1;
-exec program1 memory
+let program2 = group program1 in
+exec program2 memory

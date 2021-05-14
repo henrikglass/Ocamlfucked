@@ -1,5 +1,5 @@
 build:
-	ocamlc -o ocamlfucked src/ocamlfucked.ml
+	ocamlopt -o ocamlfucked src/ocamlfucked.ml
 
 run:
 	ocaml src/ocamlfucked.ml
