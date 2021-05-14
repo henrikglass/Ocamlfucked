@@ -108,7 +108,7 @@ let parse (tokens : char list) : instr list =
 (************************************** run ***********************************)
 (* TODO Support for command line args. E.g $./ocamlfucked test/hanoi.b*)
 let memory : char tape = ([], List.init 10000 (fun x -> Char.chr 0));;
-let file = open_in "test/factor.b" in
+let file = open_in "test/mandelbrot.b" in
 let chars = read_file file in
 let program1 = parse chars in
 let program2 = group program1 in
