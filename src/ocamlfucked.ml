@@ -34,17 +34,11 @@ let rec drop (n : int) (l : 'a list) : 'a list =
    Returns the resulting memory. *) 
 let rec exec (program : instr list) (memory : char tape) : char tape =
     (* IO *)
-    let rec read_char () = 
-        let c = Scanf.scanf "%c" (fun c -> c) in
-            match c with
-                  '\n' | '\r' -> read_char () (* ignore LF/CR. TODO maybe others as well?*)
-                | _           -> c
-    in
-    let put_char = fun c -> printf "%c%!" c in
+    let read_char () = Scanf.scanf "%c" (fun c -> c) in
+    let put_char c = printf "%c%!" c in
 
     (* arithmetic on chars *)
     (* Comment: Please don't laugh. *)
-    (* TODO These are a little wonky (factor.b) *)
     let (++) (c : char) (i : int) : char = Char.chr ((Char.code c + i + 256) mod 256) in 
     let (--) (c : char) (i : int) : char = Char.chr ((Char.code c - i + 256) mod 256) in
 
@@ -114,7 +108,7 @@ let parse (tokens : char list) : instr list =
 (************************************** run ***********************************)
 (* TODO Support for command line args. E.g $./ocamlfucked test/hanoi.b*)
 let memory : char tape = ([], List.init 10000 (fun x -> Char.chr 0));;
-let file = open_in "test/hanoi.b" in
+let file = open_in "test/factor.b" in
 let chars = read_file file in
 let program1 = parse chars in
 let program2 = group program1 in
