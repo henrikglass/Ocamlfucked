@@ -38,7 +38,7 @@ let rec exec (program : instr list) (memory : char tape) : char tape =
     let put_char c = printf "%c%!" c in
 
     (* arithmetic on chars *)
-    (* Comment: Please don't laugh. *)
+    (* Comment: Please don't laugh. I know this ugly & unsafe*)
     let (++) (c : char) (i : int) : char = Char.chr ((Char.code c + i + 256) mod 256) in 
     let (--) (c : char) (i : int) : char = Char.chr ((Char.code c - i + 256) mod 256) in
 
