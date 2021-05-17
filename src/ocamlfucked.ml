@@ -109,10 +109,3 @@ with
         print_string (Printexc.to_string e);
         print_string "\n";
         exit 1
-
-(*let memory : char tape = ([], List.init 10000 (fun x -> Char.chr 0));;
-let file = open_in "test/mandelbrot.b" in
-let chars = read_file file in
-let program1 = parse chars in
-let program2 = group program1 in
-exec program2 memory *)
