@@ -1,2 +1,2 @@
 # Ocamlfucked
-Ocamlfucked is a purely functional brainfuck interpreter written in OCaml.
+Ocamlfucked is a purely functional (with the exception of I/O) brainfuck interpreter written in OCaml.
