@@ -13,21 +13,6 @@ type instr =
 (* A tape is a tuple (['a], ['a]). *)
 type 'a tape = 'a list * 'a list
 
-(*************************** Useful helper functions **************************)
-(* Equivalent to Haskell's take *)
-let take (n : int) (src : 'a list) : 'a list =
-    let rec f n src tgt = match n with
-          0 -> tgt
-        | _ -> f (n - 1) (List.tl src) ((List.hd src)::tgt) 
-    in
-        List.rev (f n src [])
-
-(* Equivalent to Haskell's drop *)
-let rec drop (n : int) (l : 'a list) : 'a list =
-    match n with
-          0 -> l
-        | _ -> drop (n-1) (List.tl l)
-
 (***************************** Execute a program ******************************)
 
 (* exec :: [instr] -> char tape -> char tape. Executes program on a memory tape. 
@@ -43,8 +28,8 @@ let rec exec (program : instr list) (memory : char tape) : char tape =
     let (--) (c : char) (i : int) : char = Char.chr ((Char.code c - i + 256) mod 256) in
 
     match program, memory with
-           (Next i)::xs,  (l, r)      -> exec xs (List.rev_append (take i r) l, drop i r)
-        |  (Prev i)::xs,  (l, r)      -> exec xs (drop i l, List.rev_append (take i l) r)
+           (Next i)::xs,  (l, r)      -> exec xs (List.rev_append (Util.take i r) l, Util.drop i r)
+        |  (Prev i)::xs,  (l, r)      -> exec xs (Util.drop i l, List.rev_append (Util.take i l) r)
         |  (Plus i)::xs,  (l, c::r)   -> exec xs (l, (c ++ i)::r)
         |  (Minus i)::xs, (l, c::r)   -> exec xs (l, (c -- i)::r)
         |  Input::xs,     (l, c::r)   -> exec xs (l, read_char()::r)
@@ -73,13 +58,13 @@ let read_file (f : in_channel) : char list =
         List.rev (read_file [] f)
 
 (* group :: [instr] -> [instr]. Groups adjacent instructions of the same kind*) 
-let rec group (instrs : instr list) : instr list =
+let rec group_instrs (instrs : instr list) : instr list =
     let f = fun acc elem -> match acc, elem with
           (Next i)::xs, (Next j)   -> (Next (i+j))::xs
         | (Prev i)::xs, (Prev j)   -> (Prev (i+j))::xs
         | (Plus i)::xs, (Plus j)   -> (Plus (i+j))::xs
         | (Minus i)::xs, (Minus j) -> (Minus (i+j))::xs
-        | acc, (Loop loop_instrs)  -> (Loop (group loop_instrs))::acc
+        | acc, (Loop loop_instrs)  -> (Loop (group_instrs loop_instrs))::acc
         | acc, elem                -> elem::acc 
     in
         List.rev (List.fold_left f [] instrs)
@@ -106,10 +91,28 @@ let parse (tokens : char list) : instr list =
         List.rev (fst (parse_chars tokens []))
 
 (************************************** run ***********************************)
-(* TODO Support for command line args. E.g $./ocamlfucked test/hanoi.b*)
-let memory : char tape = ([], List.init 10000 (fun x -> Char.chr 0));;
+(* TODO Maybe specify memory configuration by command line argument *)
+let memory : char tape = ([], List.init 10000 (fun x -> Char.chr 0));; 
+
+try
+    match Sys.argv with 
+          [|_; filename|] ->
+            let f = open_in filename in
+            let contents = read_file f in
+            let program = group_instrs (parse contents) in
+            ignore (exec program memory);
+        | _ ->
+            print_string "Usage: ocamlfucked <file> \n"
+with
+    e ->
+        print_string "An error occurred: ";
+        print_string (Printexc.to_string e);
+        print_string "\n";
+        exit 1
+
+(*let memory : char tape = ([], List.init 10000 (fun x -> Char.chr 0));;
 let file = open_in "test/mandelbrot.b" in
 let chars = read_file file in
 let program1 = parse chars in
 let program2 = group program1 in
-exec program2 memory
+exec program2 memory *)
