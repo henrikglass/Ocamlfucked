@@ -47,7 +47,8 @@ let rec exec (program : instr list) (memory : char tape) : char tape =
 (************************ Read & parse a .bf file *****************************)
 
 (* read_file :: in_channel -> [char]. Reads chars from file into a list *) 
-let read_file (f : in_channel) : char list =
+let read_file (filename : string) : char list =
+    let f = open_in filename in
     let rec read_file (cl : char list) (f : in_channel) : char list =
         try
             let c = input_char f in
@@ -97,9 +98,7 @@ let memory : char tape = ([], List.init 10000 (fun x -> Char.chr 0));;
 try
     match Sys.argv with 
           [|_; filename|] ->
-            let f = open_in filename in
-            let contents = read_file f in
-            let program = group_instrs (parse contents) in
+            let program = filename |> read_file |> parse |> group_instrs in
             ignore (exec program memory);
         | _ ->
             print_string "Usage: ocamlfucked <file> \n"
